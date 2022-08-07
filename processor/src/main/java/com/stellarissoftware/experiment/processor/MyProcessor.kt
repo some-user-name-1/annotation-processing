@@ -23,10 +23,24 @@ class MyProcessor : AbstractProcessor() {
             .forEach { element ->
                 val className = element.simpleName
                 val packageName = (element.enclosingElement as PackageElement).qualifiedName
-                val builderFile = processingEnv.filer.createSourceFile("${className}Factory")
+                val annotation = element.getAnnotation(MyAnnotation::class.java)
+                val targetClassName = "${className}Factory"
 
-                with (PrintWriter(builderFile.openWriter())) {
-                    println("""
+                with (PrintWriter(processingEnv.filer.createSourceFile(targetClassName).openWriter())) {
+                    println(if (annotation.useBuilder) {
+                        """
+                        import $packageName.$className;
+
+                        public class ${className}Factory {
+                            public static class Builder {
+                                public $className build() {
+                                    return new $className();
+                                }
+                            }
+                        }
+                        """
+                    } else {
+                        """
                         import $packageName.$className;
 
                         public class ${className}Factory {
@@ -34,7 +48,8 @@ class MyProcessor : AbstractProcessor() {
                                 return new $className();
                             }
                         }
-                        """.trimIndent())
+                        """
+                    }.trimIndent())
 
                     close()
                 }
